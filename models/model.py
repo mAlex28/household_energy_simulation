@@ -39,7 +39,7 @@ class HouseholdEnergyModel(Model):
             agent_reporters={"Electricity Usage": "electricity_usage",
                              "Gas Usage": "gas_usage"}
         )
-
+# test
     def house_type(self, num_people):
         if num_people == 1:
             return 'Flat/1-bedroom'
