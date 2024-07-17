@@ -48,6 +48,8 @@ class HouseholdEnergyModel(Model):
         else:
             return '4+ bedroom'
 
+    #TODO: model agent behaviour
+
     def step(self):
         self.schedule.step()
         # Collect data at each step
