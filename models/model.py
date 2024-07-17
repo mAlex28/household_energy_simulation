@@ -5,14 +5,13 @@ from mesa.datacollection import DataCollector
 import numpy as np
 from models.agent import Household
 
-
-
 class HouseholdEnergyModel(Model):
     def __init__(self, num_households, season):
         self.num_agents = num_households
         self.season = season
         self.schedule = RandomActivation(self)
         self.grid = MultiGrid(width=10, height=10, torus=False)
+        self.running = True
 
         # Energy usage parameters annually (kWh)
         self.energy_usage_params = {
@@ -36,10 +35,16 @@ class HouseholdEnergyModel(Model):
             self.grid.place_agent(a, (x, y))
 
         self.datacollector = DataCollector(
-            agent_reporters={"Electricity Usage": "electricity_usage",
-                             "Gas Usage": "gas_usage"}
+            agent_reporters={
+                "Electricity Usage": "electricity_usage",
+                "Gas Usage": "gas_usage",
+                "House Type": "house_type",
+                "Num People": "num_people",
+                "Energy Saving": "energy_saving",
+                "Season": "season"
+            }
         )
-# test
+
     def house_type(self, num_people):
         if num_people == 1:
             return 'Flat/1-bedroom'
@@ -47,8 +52,6 @@ class HouseholdEnergyModel(Model):
             return 'Medium 2-3 bedroom'
         else:
             return '4+ bedroom'
-
-    #TODO: model agent behaviour
 
     def step(self):
         self.schedule.step()

@@ -16,7 +16,16 @@ class Household(Agent):
         usage = np.random.normal(mean, std)
         if self.season == 'winter':
             usage *= 1.36
+        if self.energy_saving == 'Yes':
+            usage *= 0.9
         return max(usage, 0)
 
+    def move(self):
+        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+        new_position = self.random.choice(possible_steps)
+        self.model.grid.move_agent(self, new_position)
+
     def step(self):
-        pass
+        self.move()
+        self.electricity_usage = self.calculate_energy_usage('electricity')
+        self.gas_usage = self.calculate_energy_usage('gas')
