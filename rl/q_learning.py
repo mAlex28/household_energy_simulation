@@ -1,14 +1,16 @@
 import numpy as np
-import random
 
-# Define states and actions
-states = ['morning', 'afternoon', 'evening', 'night']
+# Define states (seasons)
+states = ['winter', 'spring', 'summer', 'autumn']
 state_indices = {state: idx for idx, state in enumerate(states)}
 
+# Define actions (control appliances)
 actions = [
     'hvac_on', 'hvac_off',
     'water_heater_on', 'water_heater_off',
-    'washer_on', 'washer_off',
+    'dryer_on', 'dryer_off',
+    'dishwasher_on', 'dishwasher_off',
+    'washing_machine_on', 'washing_machine_off',
     'lights_on', 'lights_off'
 ]
 action_indices = {action: idx for idx, action in enumerate(actions)}
@@ -16,104 +18,93 @@ action_indices = {action: idx for idx, action in enumerate(actions)}
 # Initialize Q-table with zeros
 q_table = np.zeros((len(states), len(actions)))
 
-# Define rewards for each state-action pair
-rewards = {
-    # HVAC control
-    ('morning', 'hvac_on'): -2,
-    ('morning', 'hvac_off'): 1,
-    ('afternoon', 'hvac_on'): -1,
-    ('afternoon', 'hvac_off'): 2,
-    ('evening', 'hvac_on'): -1,
-    ('evening', 'hvac_off'): 2,
-    ('night', 'hvac_on'): 1,
-    ('night', 'hvac_off'): -1,
-    
-    # Water heater control
-    ('morning', 'water_heater_on'): 1,
-    ('morning', 'water_heater_off'): -1,
-    ('afternoon', 'water_heater_on'): 1,
-    ('afternoon', 'water_heater_off'): -1,
-    ('evening', 'water_heater_on'): 2,
-    ('evening', 'water_heater_off'): 0,
-    ('night', 'water_heater_on'): 2,
-    ('night', 'water_heater_off'): 0,
-    
-    # Washer control
-    ('morning', 'washer_on'): -1,
-    ('morning', 'washer_off'): 1,
-    ('afternoon', 'washer_on'): 0,
-    ('afternoon', 'washer_off'): 1,
-    ('evening', 'washer_on'): 0,
-    ('evening', 'washer_off'): 1,
-    ('night', 'washer_on'): -1,
-    ('night', 'washer_off'): 1,
-    
-    # Lighting control
-    ('morning', 'lights_on'): 0,
-    ('morning', 'lights_off'): 1,
-    ('afternoon', 'lights_on'): 0,
-    ('afternoon', 'lights_off'): 1,
-    ('evening', 'lights_on'): -1,
-    ('evening', 'lights_off'): 1,
-    ('night', 'lights_on'): -2,
-    ('night', 'lights_off'): 2,
+# Average energy usage (kWh)
+average_usage = {
+    'winter': {'electricity': 300, 'gas': 1000},
+    'spring': {'electricity': 200, 'gas': 500},
+    'summer': {'electricity': 250, 'gas': 300},
+    'autumn': {'electricity': 280, 'gas': 700}
 }
 
-# Parameters
+# Example action impact on energy usage (dummy values for demonstration)
+action_impact = {
+    'hvac_on': {'electricity': 50, 'gas': 20},
+    'hvac_off': {'electricity': -10, 'gas': -5},
+    'water_heater_on': {'electricity': 30, 'gas': 15},
+    'water_heater_off': {'electricity': -5, 'gas': -10},
+    'dryer_on': {'electricity': 40, 'gas': 0},
+    'dryer_off': {'electricity': -10, 'gas': 0},
+    'dishwasher_on': {'electricity': 25, 'gas': 0},
+    'dishwasher_off': {'electricity': -5, 'gas': 0},
+    'washing_machine_on': {'electricity': 20, 'gas': 0},
+    'washing_machine_off': {'electricity': -5, 'gas': 0},
+    'lights_on': {'electricity': 15, 'gas': 0},
+    'lights_off': {'electricity': -5, 'gas': 0}
+}
+
+# Define rewards based on energy savings
+def calculate_reward(state, action):
+    usage = average_usage[state]
+    impact = action_impact[action]
+    new_electricity_usage = max(usage['electricity'] - impact['electricity'], 0)
+    new_gas_usage = max(usage['gas'] - impact['gas'], 0)
+    
+    # Reward is the difference between average usage and new usage
+    reward_electricity = (usage['electricity'] - new_electricity_usage) / usage['electricity']
+    reward_gas = (usage['gas'] - new_gas_usage) / usage['gas']
+    
+    # Combine rewards for electricity and gas
+    return reward_electricity + reward_gas
+
+# Populate the Q-table with calculated reward values
+for state in states:
+    for action in actions:
+        reward = calculate_reward(state, action)
+        state_idx = state_indices[state]
+        action_idx = action_indices[action]
+        q_table[state_idx, action_idx] = reward
+
+# Display the Q-table
+print("Initial Q-table:")
+print(q_table)
+
+# Example Q-learning parameters
 alpha = 0.1  # Learning rate
 gamma = 0.9  # Discount factor
 epsilon = 0.1  # Exploration rate
 
-def initialize_state():
-    # Randomly select a state from the defined states
-    return random.choice(states)
-
-def select_action(state):
-    state_idx = state_indices[state]
-    if random.uniform(0, 1) < epsilon:
-        # Exploration: choose a random action
-        return random.choice(actions)
-    else:
-        # Exploitation: choose the action with the highest Q-value for the given state
-        return actions[np.argmax(q_table[state_idx])]
-
-def perform_action(action):
-    # For simplicity, we assume that performing an action will lead to a random new state
-    # In a real scenario, this function should simulate the effects of the action on the environment
-    return random.choice(states)
-
-def calculate_reward(state, action, next_state):
-    # Calculate reward based on predefined rewards
-    state_action = (state, action)
-    return rewards.get(state_action, 0)
-
-def q_learning(episodes):
-    for _ in range(episodes):
-        state = initialize_state()
-        done = False
+# Simulate the Q-learning process
+def q_learning(num_episodes=1000):
+    for episode in range(num_episodes):
+        state = np.random.choice(states)
+        state_idx = state_indices[state]
         
-        while not done:
-            action = select_action(state)
-            next_state = perform_action(action)
-            reward = calculate_reward(state, action, next_state)
-            
-            # Update Q-value
-            state_idx = state_indices[state]
-            next_state_idx = state_indices[next_state]
-            action_idx = action_indices[action]
-            
-            best_next_action = np.argmax(q_table[next_state_idx])
-            q_table[state_idx, action_idx] = q_table[state_idx, action_idx] + alpha * (
-                reward + gamma * q_table[next_state_idx, best_next_action] - q_table[state_idx, action_idx])
-            
-            state = next_state
-            
-            # Termination condition (if any)
-            done = True  # For simplicity, we terminate after one iteration; adjust as needed
+        # Choose an action
+        if np.random.rand() < epsilon:
+            action_idx = np.random.choice(len(actions))
+        else:
+            action_idx = np.argmax(q_table[state_idx])
+        
+        action = actions[action_idx]
+        
+        # Simulate next state and reward (this would be data-driven in practice)
+        next_state = np.random.choice(states)
+        next_state_idx = state_indices[next_state]
+        reward = calculate_reward(state, action)
+        
+        # Update Q-table
+        best_next_action_idx = np.argmax(q_table[next_state_idx])
+        td_target = reward + gamma * q_table[next_state_idx, best_next_action_idx]
+        td_error = td_target - q_table[state_idx, action_idx]
+        q_table[state_idx, action_idx] += alpha * td_error
+        
+        # Move to the next state
+        state = next_state
+        state_idx = next_state_idx
 
 # Run Q-learning
-q_learning(episodes=1000)
+q_learning()
 
-# Print the learned Q-table
-print("Learned Q-table:")
+# Display the updated Q-table
+print("Updated Q-table after Q-learning:")
 print(q_table)
