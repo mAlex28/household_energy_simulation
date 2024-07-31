@@ -1,17 +1,10 @@
 import numpy as np
 import random
 
-# Parameters
-alpha = 0.1  # Learning rate
-gamma = 0.9  # Discount factor
-epsilon = 0.1  # Exploration rate
-num_episodes = 1000
-
-# Define states (e.g., different times of the day or energy pricing levels)
+# Define states and actions
 states = ['morning', 'afternoon', 'evening', 'night']
 state_indices = {state: idx for idx, state in enumerate(states)}
 
-# Define actions (control each appliance)
 actions = [
     'hvac_on', 'hvac_off',
     'water_heater_on', 'water_heater_off',
@@ -23,7 +16,7 @@ action_indices = {action: idx for idx, action in enumerate(actions)}
 # Initialize Q-table with zeros
 q_table = np.zeros((len(states), len(actions)))
 
-# Rewards for each state-action pair
+# Define rewards for each state-action pair
 rewards = {
     # HVAC control
     ('morning', 'hvac_on'): -2,
@@ -66,43 +59,60 @@ rewards = {
     ('night', 'lights_off'): 2,
 }
 
-# Q-learning algorithm
-def q_learning(num_episodes):
-    for _ in range(num_episodes):
-        state = random.choice(states)  # Start in a random state
+# Parameters
+alpha = 0.1  # Learning rate
+gamma = 0.9  # Discount factor
+epsilon = 0.1  # Exploration rate
+
+def initialize_state():
+    # Randomly select a state from the defined states
+    return random.choice(states)
+
+def select_action(state):
+    state_idx = state_indices[state]
+    if random.uniform(0, 1) < epsilon:
+        # Exploration: choose a random action
+        return random.choice(actions)
+    else:
+        # Exploitation: choose the action with the highest Q-value for the given state
+        return actions[np.argmax(q_table[state_idx])]
+
+def perform_action(action):
+    # For simplicity, we assume that performing an action will lead to a random new state
+    # In a real scenario, this function should simulate the effects of the action on the environment
+    return random.choice(states)
+
+def calculate_reward(state, action, next_state):
+    # Calculate reward based on predefined rewards
+    state_action = (state, action)
+    return rewards.get(state_action, 0)
+
+def q_learning(episodes):
+    for _ in range(episodes):
+        state = initialize_state()
         done = False
-
+        
         while not done:
-            # Choose action: explore or exploit
-            if random.uniform(0, 1) < epsilon:
-                action = random.choice(actions)  # Explore
-            else:
-                state_idx = state_indices[state]
-                action_idx = np.argmax(q_table[state_idx])  # Exploit
-                action = actions[action_idx]
-
-            # Take action and observe reward and next state
-            reward = rewards.get((state, action), 0)
-            next_state = random.choice(states)  # Transition to a random next state
-
+            action = select_action(state)
+            next_state = perform_action(action)
+            reward = calculate_reward(state, action, next_state)
+            
             # Update Q-value
             state_idx = state_indices[state]
-            action_idx = action_indices[action]
             next_state_idx = state_indices[next_state]
-            best_next_action_idx = np.argmax(q_table[next_state_idx])
-
-            td_target = reward + gamma * q_table[next_state_idx, best_next_action_idx]
-            td_error = td_target - q_table[state_idx, action_idx]
-            q_table[state_idx, action_idx] += alpha * td_error
-
-            # Transition to the next state
+            action_idx = action_indices[action]
+            
+            best_next_action = np.argmax(q_table[next_state_idx])
+            q_table[state_idx, action_idx] = q_table[state_idx, action_idx] + alpha * (
+                reward + gamma * q_table[next_state_idx, best_next_action] - q_table[state_idx, action_idx])
+            
             state = next_state
-
-            # For simplicity, end each episode after one step
-            done = True
+            
+            # Termination condition (if any)
+            done = True  # For simplicity, we terminate after one iteration; adjust as needed
 
 # Run Q-learning
-q_learning(num_episodes)
+q_learning(episodes=1000)
 
 # Print the learned Q-table
 print("Learned Q-table:")
